@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@types/webrtc": "^0.0.45"
+  }
+}
