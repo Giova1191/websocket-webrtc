@@ -1,215 +1,353 @@
 import express from 'express';
 import http from 'http';
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import cors from 'cors';
 import session from 'express-session';
-import { PrismaClient } from '@prisma/client';
-import authRoutes from './routes/authRoutes';
-import multer from 'multer';
-import path from 'path';
+import { db } from './db'; // Importa il db dal file separato
 
-const prisma = new PrismaClient();
+// In cima al file server.ts, dopo gli import
+declare module 'express-session' {
+  interface SessionData {
+    userId: number;
+  }
+}
+
+// Estendi l'interfaccia Socket per includere userId
+interface CustomSocket extends Socket {
+  userId?: number;
+}
+
 const app = express();
 const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
 
-// Middleware
+// Configurazione middleware
 app.use(cors({
-    origin: 'http://localhost:3000',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type']
+  origin: 'http://localhost:5173',
+  credentials: true
 }));
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { 
-        secure: false,
-        httpOnly: true,
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000
-    }
+  secret: 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 ore
+  }
 }));
 
-app.use('/api/auth', authRoutes);
-app.use('/uploads', express.static('uploads'));
-
-const storage = multer.diskStorage({
-    destination: 'uploads/',
-    filename: (req, file, cb) => {
-      cb(null, Date.now() + path.extname(file.originalname));
-    }
-});
+// Gestione degli eventi socket
+io.on('connection', (socket: CustomSocket) => {
+  console.log('New client connected');
   
-const upload = multer({ storage });
+  // Quando un utente si connette
+  socket.on('user_connected', (userId) => {
+    // Associa l'ID socket all'ID utente
+    socket.userId = userId;
+    
+    // Notifica tutti i client degli utenti online
+    const onlineUsers = Array.from(io.sockets.sockets.values())
+      .filter((s: CustomSocket) => s.userId)
+      .map((s: CustomSocket) => s.userId);
+    
+    io.emit('users_online', onlineUsers);
+  });
   
-app.post('/api/upload', upload.single('file'), (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ message: 'Nessun file caricato' });
+  // Quando un utente invia un messaggio
+  socket.on('send_message', async (messageData) => {
+    try {
+      // Salva il messaggio nel database
+      const newMessage = await db.createMessage(messageData);
+      
+      // Emetti il messaggio a tutti i client
+      io.emit('new_message', newMessage);
+    } catch (error) {
+      console.error('Error saving message:', error);
     }
-    res.json({ 
-      filename: req.file.filename,
-      path: `/uploads/${req.file.filename}` 
-    });
-});
-
-const io = new Server(server, {
-    cors: {
-        origin: 'http://localhost:3000',
-        methods: ['GET', 'POST'],
-        credentials: true
-    }
-});
-
-// Mappa per tenere traccia degli utenti online
-const onlineUsers = new Map<string, number>();
-
-io.on('connection', (socket) => {
-    console.log('Nuova connessione socket:', socket.id);
-
-    socket.on('user connected', async (userId: number) => {
-        console.log('Utente connesso:', userId);
-        onlineUsers.set(socket.id, userId);
-        
-        const users = await prisma.user.findMany({
-            select: {
-                id: true,
-                username: true
-            }
+  });
+  
+  // Quando un utente apre una chat
+  socket.on('chat_open', (data) => {
+    console.log(`User ${data.userId} opened chat with ${data.withUserId}`);
+  });
+  
+  // Gestione delle videochiamate
+  socket.on('video_call_request', (data) => {
+    // Inoltra la richiesta al destinatario
+    io.sockets.sockets.forEach((s: CustomSocket) => {
+      if (s.userId === data.to) {
+        s.emit('video_call_request', {
+          from: data.from,
+          username: data.username
         });
-
-        const onlineUsersList = users.map(user => ({
-            ...user,
-            online: Array.from(onlineUsers.values()).includes(user.id)
-        }));
-
-        io.emit('users online', onlineUsersList);
+      }
     });
+  });
 
-    socket.on('send message', async (data: { content: string; receiverId: number }) => {
-        const senderId = onlineUsers.get(socket.id);
-        if (!senderId) return;
-
-        try {
-            const message = await prisma.message.create({
-                data: {
-                    content: data.content,
-                    senderId,
-                    receiverId: data.receiverId,
-                },
-                include: {
-                    sender: true
-                }
-            });
-
-            // Invia il messaggio al destinatario
-            const recipientSocketId = Array.from(onlineUsers.entries())
-                .find(([_, id]) => id === data.receiverId)?.[0];
-
-            if (recipientSocketId) {
-                io.to(recipientSocketId).emit('new message', message);
-            }
-
-            // Invia il messaggio anche al mittente
-            socket.emit('new message', message);
-        } catch (error) {
-            console.error('Errore nell\'invio del messaggio:', error);
-        }
+  socket.on('video_call_accepted', (data) => {
+    // Notifica l'iniziatore che la chiamata è stata accettata
+    io.sockets.sockets.forEach((s: CustomSocket) => {
+      if (s.userId === data.to) {
+        s.emit('video_call_accepted', {
+          from: data.from
+        });
+      }
     });
+  });
 
-    socket.on('file shared', async (data: { filename: string, receiverId: number }) => {
-        const senderId = onlineUsers.get(socket.id);
-        if (!senderId) return;
+  socket.on('video_call_rejected', (data) => {
+    // Notifica l'iniziatore che la chiamata è stata rifiutata
+    io.sockets.sockets.forEach((s: CustomSocket) => {
+      if (s.userId === data.to) {
+        s.emit('video_call_rejected', {
+          from: data.from
+        });
+      }
+    });
+  });
+
+  socket.on('video_offer', (data) => {
+    // Inoltra l'offerta al destinatario
+    io.sockets.sockets.forEach((s: CustomSocket) => {
+      if (s.userId === data.to) {
+        s.emit('video_offer', {
+          offer: data.offer,
+          from: data.from
+        });
+      }
+    });
+  });
+
+  socket.on('video_answer', (data) => {
+    // Inoltra la risposta all'iniziatore
+    io.sockets.sockets.forEach((s: CustomSocket) => {
+      if (s.userId === data.to) {
+        s.emit('video_answer', {
+          answer: data.answer,
+          from: data.from
+        });
+      }
+    });
+  });
+
+  socket.on('video_ice_candidate', (data) => {
+    // Inoltra il candidato ICE
+    io.sockets.sockets.forEach((s: CustomSocket) => {
+      if (s.userId === data.to) {
+        s.emit('video_ice_candidate', {
+          candidate: data.candidate,
+          from: data.from
+        });
+      }
+    });
+  });
+
+  socket.on('video_call_ended', (data) => {
+    // Notifica la fine della chiamata
+    io.sockets.sockets.forEach((s: CustomSocket) => {
+      if (s.userId === data.to) {
+        s.emit('video_call_ended', {
+          from: data.from
+        });
+      }
+    });
+  });
+
+  socket.on('mark_messages_read', (data) => {
+    // Segna i messaggi come letti nel database
+    db.markAsRead(data.senderId, data.receiverId)
+      .catch(err => console.error('Errore nel segnare i messaggi come letti:', err));
+  });
+
+  // Quando un socket si disconnette
+  socket.on('disconnect', () => {
+    if (socket.userId) {
+      // Notifica tutti che l'utente è offline
+      io.emit('user_disconnected', socket.userId);
       
-        try {
-          const message = await prisma.message.create({
-            data: {
-              content: `FILE:${data.filename}`,
-              senderId,
-              receiverId: data.receiverId,
-            },
-            include: { sender: true }
-          });
+      // Aggiorna la lista degli utenti online
+      const onlineUsers = Array.from(io.sockets.sockets.values())
+        .filter((s: CustomSocket) => s.userId)
+        .map((s: CustomSocket) => s.userId);
       
-          const recipientSocketId = Array.from(onlineUsers.entries())
-            .find(([_, id]) => id === data.receiverId)?.[0];
+      io.emit('users_online', onlineUsers);
+    }
+    console.log('Client disconnected');
+  });
+});
+
+// Rotte per gli utenti
+app.get('/api/users', async (_req, res) => {
+  try {
+    const users = await db.getAllUsers();
+    res.json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Rotte per i messaggi
+app.get('/api/messages', async (req, res) => {
+  try {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+    
+    const messages = await db.getMessages(userId);
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Endpoint per il login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username e password richiesti' });
+    }
+
+    // Cerca l'utente nel database
+    const user = await db.getUser(username);
+    
+    if (!user) {
+      // Se l'utente non esiste, crealo (solo per test, rimuovi in produzione)
+      const userId = await db.createUser(username, password);
+      const newUser = await db.getUserById(userId);
       
-          if (recipientSocketId) {
-            io.to(recipientSocketId).emit('new message', message);
-          }
-          socket.emit('new message', message);
-        } catch (error) {
-          console.error('Errore nella condivisione del file:', error);
-        }
+      // Salva l'ID dell'utente nella sessione
+      if (req.session) {
+        req.session.userId = userId;
+      }
+      
+      return res.status(201).json({ 
+        message: 'Utente creato e autenticato', 
+        user: { id: newUser?.id, username: newUser?.username } 
+      });
+    }
+    
+    // In un'app reale, confronteresti la password con hash
+    // qui lo facciamo in modo molto semplice per semplicità
+    if (user.password !== password) {
+      return res.status(401).json({ message: 'Credenziali non valide' });
+    }
+    
+    // Salva l'ID dell'utente nella sessione
+    if (req.session) {
+      req.session.userId = user.id;
+    }
+    
+    // Restituisci i dati dell'utente senza la password
+    return res.json({ 
+      message: 'Login effettuato con successo', 
+      user: { id: user.id, username: user.username } 
     });
     
-    socket.on('call user', (data) => {
-        console.log('Chiamata da', data.from, 'a', data.userToCall);
-        const recipientSocketId = Array.from(onlineUsers.entries())
-            .find(([_, id]) => id === data.userToCall)?.[0];
-
-        if (recipientSocketId) {
-            io.to(recipientSocketId).emit('incoming call', {
-                signal: data.signalData,
-                from: data.from
-            });
-        }
-    });
-
-    socket.on('answer call', (data) => {
-        console.log('Risposta alla chiamata verso', data.to);
-        const callerSocketId = Array.from(onlineUsers.entries())
-            .find(([_, id]) => id === data.to)?.[0];
-
-        if (callerSocketId) {
-            io.to(callerSocketId).emit('call accepted', data.signal);
-        }
-    });
-
-    socket.on('disconnect', async () => {
-        const userId = onlineUsers.get(socket.id);
-        if (userId) {
-            console.log('Utente disconnesso:', userId);
-            onlineUsers.delete(socket.id);
-
-            // Invia la lista aggiornata degli utenti online a tutti
-            const users = await prisma.user.findMany({
-                select: {
-                    id: true,
-                    username: true
-                }
-            });
-
-            const onlineUsersList = users.map(user => ({
-                ...user,
-                online: Array.from(onlineUsers.values()).includes(user.id)
-            }));
-
-            io.emit('users online', onlineUsersList);
-        }
-    });
+  } catch (error) {
+    console.error('Errore durante il login:', error);
+    res.status(500).json({ message: 'Errore del server' });
+  }
 });
 
-// Correggi la funzione senza usare il parametro 'req' non utilizzato
-app.get('/api/users', async (_, res) => {
-    try {
-        const users = await prisma.user.findMany({
-            select: {
-                id: true,
-                username: true
-            }
-        });
-        res.json(users);
-    } catch (error) {
-        console.error('Errore nel recupero degli utenti:', error);
-        res.status(500).json({ message: 'Errore nel recupero degli utenti' });
+// Endpoint per la registrazione
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username e password richiesti' });
     }
+    
+    // Verifica se l'utente esiste già
+    const existingUser = await db.getUser(username);
+    if (existingUser) {
+      return res.status(409).json({ message: 'Username già in uso' });
+    }
+    
+    // Crea un nuovo utente
+    const userId = await db.createUser(username, password);
+    const user = await db.getUserById(userId);
+    
+    // Salva l'ID dell'utente nella sessione
+    if (req.session) {
+      req.session.userId = userId;
+    }
+    
+    return res.status(201).json({ 
+      message: 'Utente registrato con successo', 
+      user: { id: user?.id, username: user?.username } 
+    });
+    
+  } catch (error) {
+    console.error('Errore durante la registrazione:', error);
+    res.status(500).json({ message: 'Errore del server' });
+  }
 });
 
+// Endpoint per recuperare l'utente corrente
+app.get('/api/auth/current-user', (req, res) => {
+  try {
+    // Se non c'è un userId nella sessione, l'utente non è autenticato
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ authenticated: false });
+    }
+    
+    // Recupera i dati dell'utente
+    db.getUserById(req.session.userId)
+      .then(user => {
+        if (!user) {
+          return res.status(404).json({ message: 'Utente non trovato' });
+        }
+        
+        // Restituisci i dati dell'utente senza la password
+        res.json({ 
+          authenticated: true, 
+          user: { id: user.id, username: user.username } 
+        });
+      })
+      .catch(error => {
+        console.error('Errore nel recupero dell\'utente:', error);
+        res.status(500).json({ message: 'Errore del server' });
+      });
+    
+  } catch (error) {
+    console.error('Errore nel controllo dell\'autenticazione:', error);
+    res.status(500).json({ message: 'Errore del server' });
+  }
+});
+
+// Endpoint per il logout
+app.post('/api/auth/logout', (req, res) => {
+  if (req.session) {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: 'Errore durante il logout' });
+      }
+      res.clearCookie('connect.sid'); // O qualunque sia il nome del tuo cookie di sessione
+      return res.json({ message: 'Logout effettuato con successo' });
+    });
+  } else {
+    res.json({ message: 'Nessuna sessione attiva' });
+  }
+});
+
+// Avvia il server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-    console.log(`Server in ascolto sulla porta ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
