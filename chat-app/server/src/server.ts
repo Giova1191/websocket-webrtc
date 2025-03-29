@@ -4,6 +4,9 @@ import { Server, Socket } from 'socket.io';
 import cors from 'cors';
 import session from 'express-session';
 import { db } from './db'; // Importa il db dal file separato
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
 // In cima al file server.ts, dopo gli import
 declare module 'express-session' {
@@ -45,6 +48,56 @@ app.use(session({
     maxAge: 24 * 60 * 60 * 1000 // 24 ore
   }
 }));
+
+// Configura multer per il caricamento file
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, 'uploads');
+    
+    // Crea la directory se non esiste
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    // Genera un nome di file unico
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, uniqueSuffix + ext);
+  }
+});
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 } // Limite di 50MB
+});
+
+// Endpoint per il caricamento file
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    // Costruisci URL per accedere al file
+    const fileUrl = `/uploads/${req.file.filename}`;
+    
+    res.status(200).json({
+      message: 'File uploaded successfully',
+      fileName: req.file.originalname,
+      fileUrl: fileUrl,
+      fileType: req.file.mimetype
+    });
+  } catch (err) {
+    console.error('Error in file upload:', err);
+    res.status(500).json({ error: 'Server error during upload' });
+  }
+});
+
+// Servi i file statici dalla cartella uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Gestione degli eventi socket
 io.on('connection', (socket: CustomSocket) => {

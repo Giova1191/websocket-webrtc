@@ -157,10 +157,11 @@
   .messages-container {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
+    padding: 15px;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-height: calc(100vh - 180px);
   }
   
   .message {
@@ -430,4 +431,69 @@
 
   .logout-button::before {
     content: '🚪';
+  }
+
+  .attach-file-button {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 10px;
+    color: #64748b;
+  }
+
+  .attach-file-button:hover {
+    color: #334155;
+  }
+
+  .attach-file-button:disabled {
+    color: #cbd5e1;
+    cursor: not-allowed;
+  }
+
+  .file-message {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .file-message a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+  }
+
+  .file-message a:hover {
+    text-decoration: underline;
+  }
+
+  .image-message img {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .video-message video {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 8px;
+  }
+
+  .audio-message audio {
+    max-width: 200px;
+  }
+
+  .pdf-message, .generic-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .file-icon, .pdf-icon {
+    font-size: 24px;
   }

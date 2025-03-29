@@ -50,6 +50,9 @@ const Chat = () => {
   const [isCallInitiator, setIsCallInitiator] = useState<boolean>(false);
   const [callPeerUser, setCallPeerUser] = useState<User | null>(null);
 
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // References for currentUser, selectedUser, and users
@@ -330,6 +333,116 @@ const Chat = () => {
     scrollToBottom();
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !socket || !currentUser || !selectedUser) return;
+    
+    const file = files[0];
+    setIsUploading(true);
+    
+    // Crea un FormData per caricare il file
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('senderId', currentUser.id.toString());
+    formData.append('receiverId', selectedUser.id.toString());
+    
+    // Carica il file al server
+    fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('File uploaded:', data);
+      
+      // Invia un messaggio con il link al file
+      socket.emit('send_message', {
+        content: `FILE:${data.fileType}:${data.fileName}:${data.fileUrl}`,
+        receiverId: selectedUser.id,
+        senderId: currentUser.id,
+        fileType: data.fileType
+      });
+      
+      // Resetta l'input file
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    })
+    .catch(err => {
+      console.error('Error uploading file:', err);
+      alert('Errore durante il caricamento del file. Riprova.');
+    })
+    .finally(() => {
+      setIsUploading(false);
+    });
+  };
+
+  const renderMessage = (message: Message) => {
+    // Controlla se il messaggio contiene un file
+    if (message.content.startsWith('FILE:')) {
+      const [, fileType, fileName, fileUrl] = message.content.split(':');
+      
+      // Renderizza in base al tipo di file
+      if (fileType.startsWith('image')) {
+        return (
+          <div className="file-message image-message">
+            <img src={fileUrl} alt={fileName} />
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" download={fileName}>
+              {fileName}
+            </a>
+          </div>
+        );
+      } else if (fileType.startsWith('video')) {
+        return (
+          <div className="file-message video-message">
+            <video controls>
+              <source src={fileUrl} type={fileType} />
+              Il tuo browser non supporta il tag video.
+            </video>
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" download={fileName}>
+              {fileName}
+            </a>
+          </div>
+        );
+      } else if (fileType.startsWith('audio')) {
+        return (
+          <div className="file-message audio-message">
+            <audio controls>
+              <source src={fileUrl} type={fileType} />
+              Il tuo browser non supporta il tag audio.
+            </audio>
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" download={fileName}>
+              {fileName}
+            </a>
+          </div>
+        );
+      } else if (fileType === 'application/pdf') {
+        return (
+          <div className="file-message pdf-message">
+            <div className="pdf-icon">📄</div>
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" download={fileName}>
+              {fileName}
+            </a>
+          </div>
+        );
+      } else {
+        // Per tutti gli altri tipi di file
+        return (
+          <div className="file-message generic-file">
+            <div className="file-icon">📎</div>
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" download={fileName}>
+              {fileName}
+            </a>
+          </div>
+        );
+      }
+    }
+    
+    // Messaggio normale di testo
+    return message.content;
+  };
+
   const selectUser = (user: User) => {
     setSelectedUser(user);
     console.log('Selected user:', user.username);
@@ -554,7 +667,7 @@ const Chat = () => {
                       className={`message ${message.senderId === currentUser?.id ? 'sent' : 'received'}`}
                     >
                       <div className="message-content">
-                        <p>{message.content}</p>
+                        {renderMessage(message)}
                         <span className="message-time">
                           {new Date(message.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                         </span>
@@ -566,17 +679,34 @@ const Chat = () => {
             </div>
             
             <form className="message-form" onSubmit={sendMessage}>
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                className="file-input"
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+              />
+              <button 
+                type="button" 
+                className="attach-file-button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                title="Allega file"
+              >
+                📎
+              </button>
               <input
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder="Scrivi un messaggio..."
                 autoFocus
+                disabled={isUploading}
               />
               <button 
                 type="submit" 
-                disabled={!inputMessage.trim()}
-                className={!inputMessage.trim() ? 'disabled' : ''}
+                disabled={!inputMessage.trim() || isUploading}
+                className={!inputMessage.trim() || isUploading ? 'disabled' : ''}
               >
                 Invia
               </button>

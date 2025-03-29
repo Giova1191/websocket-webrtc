@@ -159,6 +159,10 @@
     background-color: #c53030;
   }
   
+  .control-button.active.screen-sharing {
+    background-color: #059669;
+  }
+  
   .connecting-overlay {
     position: absolute;
     top: 0;

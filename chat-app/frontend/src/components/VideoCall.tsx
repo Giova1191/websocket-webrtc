@@ -67,6 +67,10 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Aggiungi stati per la condivisione schermo
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const screenStream = useRef<MediaStream | null>(null);
+
   const handleCallEnd = useCallback(() => {
     // Notifica l'altro utente
     socket.emit('video_call_ended', {
@@ -100,6 +104,64 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
 
   const toggleSize = () => {
     setIsExpanded(!isExpanded);
+  };
+
+  // Aggiungi funzione per iniziare/fermare la condivisione schermo
+  const toggleScreenSharing = async () => {
+    try {
+      if (isScreenSharing) {
+        // Ferma la condivisione schermo
+        if (screenStream.current) {
+          screenStream.current.getTracks().forEach(track => track.stop());
+        }
+
+        // Ripristina il video dalla webcam
+        if (localStream.current && peerConnection.current) {
+          const videoTrack = localStream.current.getVideoTracks()[0];
+          const sender = peerConnection.current.getSenders().find(s =>
+            s.track?.kind === 'video'
+          );
+
+          if (sender && videoTrack) {
+            sender.replaceTrack(videoTrack);
+          }
+        }
+
+        setIsScreenSharing(false);
+      } else {
+        // Inizia la condivisione schermo
+        const displayMediaOptions = {
+          video: {
+            cursor: "always"
+          },
+          audio: false
+        };
+
+        const stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
+        screenStream.current = stream;
+
+        // Sostituisci il video track nel peer connection
+        if (peerConnection.current) {
+          const videoTrack = stream.getVideoTracks()[0];
+          const sender = peerConnection.current.getSenders().find(s =>
+            s.track?.kind === 'video'
+          );
+
+          if (sender) {
+            sender.replaceTrack(videoTrack);
+          }
+        }
+
+        // Gestisci la fine della condivisione quando l'utente preme "Stop sharing"
+        stream.getVideoTracks()[0].addEventListener('ended', () => {
+          toggleScreenSharing();
+        });
+
+        setIsScreenSharing(true);
+      }
+    } catch (err) {
+      console.error("Error toggling screen share:", err);
+    }
   };
 
   useEffect(() => {
@@ -398,6 +460,14 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
           title={isCameraOff ? "Attiva camera" : "Disattiva camera"}
         >
           {isCameraOff ? '📷❌' : '📷'}
+        </button>
+        
+        <button 
+          className={`control-button ${isScreenSharing ? 'active' : ''}`}
+          onClick={toggleScreenSharing}
+          title={isScreenSharing ? "Ferma condivisione" : "Condividi schermo"}
+        >
+          {isScreenSharing ? '📺❌' : '📺'}
         </button>
         
         <button 
