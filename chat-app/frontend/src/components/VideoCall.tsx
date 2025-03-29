@@ -163,11 +163,17 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
 
     const startCall = async () => {
       try {
-        // Ottieni accesso a fotocamera e microfono
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+        // Riduci la qualità video per migliorare le prestazioni
+        const constraints = {
+          video: {
+            width: { ideal: 640 },  // Riduci da valori più alti
+            height: { ideal: 480 }, // Riduci da valori più alti
+            frameRate: { max: 15 }  // Limita il framerate per risparmiare risorse
+          },
           audio: true
-        });
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
         localStream.current = stream;
 
@@ -291,6 +297,32 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
       }
     };
   }, [socket, currentUser, peerUser, isInitiator, handleCallEnd]);
+
+  useEffect(() => {
+    let animationFrameId: number;
+    let lastTime = 0;
+    const FPS_CAP = 15; // Limita a 15 fps invece di 60
+    const interval = 1000 / FPS_CAP;
+    
+    const optimizedRender = (currentTime: number) => {
+      animationFrameId = requestAnimationFrame(optimizedRender);
+      
+      // Limita il frame rate
+      if (currentTime - lastTime < interval) return;
+      lastTime = currentTime;
+      
+      // Qui potresti aggiornare lo stato o animazioni se necessario
+    };
+    
+    // Avvia il loop ottimizzato
+    animationFrameId = requestAnimationFrame(optimizedRender);
+    
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, []);
 
   return (
     <div 
