@@ -17,6 +17,23 @@
     transition: all 0.3s ease;
   }
   
+  .login-form input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 16px;
+    background-color: #f9fafb;
+    transition: border-color 0.2s ease;
+  }
+  
+  .login-form input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+  
   .login-header {
     text-align: center;
     margin-bottom: 30px;
@@ -40,6 +57,18 @@
     border-radius: 5px;
     margin-bottom: 20px;
     text-align: center;
+  }
+  
+  .login-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
   }
   
   .login-button {
