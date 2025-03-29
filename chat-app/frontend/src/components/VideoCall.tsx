@@ -56,9 +56,16 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const localStream = useRef<MediaStream | null>(null);
 
+  const videoCallRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x: 20, y: 20 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
   const [connectionState, setConnectionState] = useState<string>('connecting');
-  const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [isCameraOff, setIsCameraOff] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const handleCallEnd = useCallback(() => {
     // Notifica l'altro utente
@@ -90,6 +97,60 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
       setIsCameraOff(!isCameraOff);
     }
   };
+
+  const toggleSize = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  useEffect(() => {
+    const header = headerRef.current;
+    const videoCall = videoCallRef.current;
+
+    if (!header || !videoCall) return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      setIsDragging(true);
+      const rect = videoCall.getBoundingClientRect();
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      });
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+
+      const x = e.clientX - dragOffset.x;
+      const y = e.clientY - dragOffset.y;
+
+      // Limita il movimento all'interno della finestra
+      const maxX = window.innerWidth - videoCall.offsetWidth;
+      const maxY = window.innerHeight - videoCall.offsetHeight;
+
+      setPosition({
+        x: Math.max(0, Math.min(x, maxX)),
+        y: Math.max(0, Math.min(y, maxY))
+      });
+
+      videoCall.style.right = 'auto';
+      videoCall.style.left = `${Math.max(0, Math.min(x, maxX))}px`;
+      videoCall.style.top = `${Math.max(0, Math.min(y, maxY))}px`;
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    header.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      header.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
 
   useEffect(() => {
     // Configurazione WebRTC
@@ -232,11 +293,36 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
   }, [socket, currentUser, peerUser, isInitiator, handleCallEnd]);
 
   return (
-    <div className="video-call-container">
-      <div className="video-call-header">
+    <div 
+      className={`video-call-container ${isExpanded ? 'expanded' : ''}`} 
+      ref={videoCallRef}
+      style={{ 
+        left: isExpanded ? '0' : `${position.x}px`, 
+        top: isExpanded ? '0' : `${position.y}px`,
+        right: isExpanded ? '0' : 'auto',
+        bottom: isExpanded ? '0' : 'auto'
+      }}
+    >
+      <div className="video-call-header" ref={headerRef}>
         <h3>Chiamata con {peerUser.username}</h3>
-        <div className="connection-status">
-          {connectionState === 'connected' ? 'Connesso' : 'Connessione in corso...'}
+        <div className="header-controls">
+          <div className="connection-status">
+            {connectionState === 'connected' ? 'Connesso' : 'Connessione in corso...'}
+          </div>
+          <button 
+            className="expand-button" 
+            onClick={toggleSize} 
+            title={isExpanded ? "Rimpicciolisci" : "Ingrandisci"}
+          >
+            {isExpanded ? '⊙' : '⊕'}
+          </button>
+          <button 
+            className="close-button" 
+            onClick={handleCallEnd} 
+            title="Chiudi chiamata"
+          >
+            ✖
+          </button>
         </div>
       </div>
 
@@ -266,23 +352,26 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
       </div>
 
       <div className="video-controls">
-        <button
+        <button 
           className={`control-button ${isMuted ? 'active' : ''}`}
           onClick={toggleMute}
+          title={isMuted ? "Attiva audio" : "Disattiva audio"}
         >
           {isMuted ? '🔇' : '🔊'}
         </button>
-
-        <button
+        
+        <button 
           className={`control-button ${isCameraOff ? 'active' : ''}`}
           onClick={toggleCamera}
+          title={isCameraOff ? "Attiva camera" : "Disattiva camera"}
         >
           {isCameraOff ? '📷❌' : '📷'}
         </button>
-
-        <button
+        
+        <button 
           className="control-button end-call"
           onClick={handleCallEnd}
+          title="Termina chiamata"
         >
           📵
         </button>

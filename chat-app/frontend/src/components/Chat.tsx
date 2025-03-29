@@ -24,6 +24,7 @@ interface Message {
   sender?: {
     username: string;
   };
+  _isLocalOnly?: boolean; // Flag per messaggi locali da sostituire
 }
 
 interface UnreadMessages {
@@ -182,22 +183,40 @@ const Chat = () => {
 
     newSocket.on('new_message', (message: Message) => {
       console.log('New message received:', message);
-      setMessages(prev => [...prev, message]);
       
-      // Controlla se il messaggio è per l'utente corrente e non è dall'utente corrente
+      // Gestisci i messaggi in modo diverso se sono stati inviati da noi
+      setMessages(prev => {
+        // Se il messaggio è stato inviato da noi
+        if (message.senderId === currentUserRef.current?.id) {
+          // Rimuovi eventuali versioni locali dello stesso messaggio
+          const filteredMessages = prev.filter(msg => 
+            !msg._isLocalOnly || // Mantieni tutti i messaggi che non sono solo locali
+            msg.content !== message.content || // O che hanno contenuto diverso
+            msg.senderId !== message.senderId || // O mittente diverso
+            msg.receiverId !== message.receiverId // O destinatario diverso
+          );
+          
+          // Aggiungi la versione del server
+          return [...filteredMessages, message];
+        }
+        
+        // Altrimenti, è un messaggio ricevuto normalmente
+        return [...prev, message];
+      });
+      
+      // Scroll to bottom on new message
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+      
+      // Il resto del codice per le notifiche rimane invariato
       if (message.receiverId === currentUserRef.current?.id && message.senderId !== currentUserRef.current?.id) {
-        // Verifica se l'utente selezionato è diverso dal mittente del messaggio
         if (!selectedUserRef.current || selectedUserRef.current.id !== message.senderId) {
-          // Incrementa il contatore dei messaggi non letti per questo utente
           setUnreadMessages(prev => ({
             ...prev,
             [message.senderId]: (prev[message.senderId] || 0) + 1
           }));
-          
-          // Riproduci il suono di notifica
           playNotificationSound();
-          
-          // Mostra notifica del browser se consentito
           if (Notification.permission === 'granted' && document.visibilityState !== 'visible') {
             const senderName = usersRef.current.find(u => u.id === message.senderId)?.username || 'Utente';
             new Notification(`Nuovo messaggio da ${senderName}`, {
@@ -207,11 +226,6 @@ const Chat = () => {
           }
         }
       }
-      
-      // Scroll to bottom on new message
-      setTimeout(() => {
-        scrollToBottom();
-      }, 100);
     });
 
     newSocket.on('user_connected', (userId: number) => {
@@ -290,13 +304,14 @@ const Chat = () => {
 
     console.log('Sending message to:', selectedUser.username);
     
+    // Invia al server
     socket.emit('send_message', {
       content: inputMessage,
       receiverId: selectedUser.id,
       senderId: currentUser.id
     });
 
-    // Ottimisticamente aggiungiamo il messaggio alla lista
+    // Ottimisticamente aggiungiamo il messaggio alla lista solo per UX immediata
     const newMessage: Message = {
       id: Date.now(), // ID temporaneo
       content: inputMessage,
@@ -306,7 +321,8 @@ const Chat = () => {
       isRead: false,
       sender: {
         username: currentUser.username
-      }
+      },
+      _isLocalOnly: true // Aggiungi un flag per indicare che è un messaggio locale
     };
 
     setMessages(prev => [...prev, newMessage]);
@@ -391,6 +407,18 @@ const Chat = () => {
     setShowVideoCall(false);
   };
 
+  const handleLogout = () => {
+    if (socket) {
+      socket.disconnect();
+    }
+    
+    // Imposta un flag nel localStorage
+    localStorage.setItem('redirectToLogin', 'true');
+    
+    // Ricarica la pagina
+    window.location.reload();
+  };
+
   if (loading) {
     return <div className="loading-state">Caricamento della chat...</div>;
   }
@@ -439,6 +467,39 @@ const Chat = () => {
                 </div>
               ))
           )}
+        </div>
+
+        <div className="sidebar-footer">
+          <button 
+            className="logout-button" 
+            onClick={async () => {
+              try {
+                // 1. Disconnetti il socket
+                if (socket) {
+                  socket.disconnect();
+                }
+                
+                // 2. Chiama l'API di logout sul server per terminare la sessione
+                await fetch('/api/auth/logout', {
+                  method: 'POST',
+                  credentials: 'include'
+                });
+                
+                // 3. Pulisci i dati di autenticazione lato client
+                localStorage.removeItem('authToken');
+                sessionStorage.removeItem('authToken');
+                document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                
+                // 4. Reindirizza alla pagina di login
+                window.location.href = '/login';
+              } catch (error) {
+                console.error('Logout failed:', error);
+                alert('Errore durante il logout. Prova a ricaricare la pagina.');
+              }
+            }}
+          >
+            Logout
+          </button>
         </div>
       </div>
       
