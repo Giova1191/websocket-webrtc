@@ -1,4 +1,4 @@
-// Questo file contiene le interfacce utilizzate nel server
+
 
 export interface User {
     id: string;

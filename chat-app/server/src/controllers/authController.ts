@@ -11,7 +11,7 @@ declare module 'express-session' {
 
 const prisma = new PrismaClient();
 
-// Registrazione di un nuovo utente
+
 export const register = async (req: Request, res: Response) => {
     const { username, password, email } = req.body;
 
@@ -46,7 +46,7 @@ export const register = async (req: Request, res: Response) => {
     }
 };
 
-// Login di un utente
+
 export const login = async (req: Request, res: Response) => {
     const { username, password } = req.body;
 
@@ -64,7 +64,7 @@ export const login = async (req: Request, res: Response) => {
             return res.status(401).json({ message: 'Password errata' });
         }
 
-        req.session.userId = user.id; // Salva l'ID utente nella sessione
+        req.session.userId = user.id; 
         res.status(200).json({ 
             message: 'Login effettuato con successo',
             user: {
@@ -78,7 +78,7 @@ export const login = async (req: Request, res: Response) => {
     }
 };
 
-// Logout di un utente
+
 export const logout = (req: Request, res: Response) => {
     req.session.destroy((err: any) => {
         if (err) {
@@ -88,7 +88,7 @@ export const logout = (req: Request, res: Response) => {
     });
 };
 
-// Get current user
+
 export const getCurrentUser = async (req: Request, res: Response) => {
     try {
         if (!req.session.userId) {

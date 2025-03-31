@@ -4,7 +4,7 @@ const Register: React.FC = () => {
   const [username, setUsername] = useState('');
 
   const handleRegister = () => {
-    // Gestisci la registrazione dell'utente
+    
   };
 
   return (

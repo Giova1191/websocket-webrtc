@@ -1,9 +1,9 @@
-// src/components/Chat.tsx
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import VideoCall from './VideoCall';
 
-// Importa direttamente l'interfaccia del client socket senza importare il valore
+
 type SocketClient = ReturnType<typeof io>;
 
 import './Chat.css';
@@ -24,7 +24,7 @@ interface Message {
   sender?: {
     username: string;
   };
-  _isLocalOnly?: boolean; // Flag per messaggi locali da sostituire
+  _isLocalOnly?: boolean; 
 }
 
 interface UnreadMessages {
@@ -68,7 +68,7 @@ const Chat = () => {
   }, [notificationSound]);
 
   useEffect(() => {
-    // Aggiorna le references
+    
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
@@ -85,7 +85,7 @@ const Chat = () => {
   }, [messages]);
 
   useEffect(() => {
-    // Richiedi il permesso per le notifiche del browser
+    
     if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
       Notification.requestPermission();
     }
@@ -187,32 +187,32 @@ const Chat = () => {
     newSocket.on('new_message', (message: Message) => {
       console.log('New message received:', message);
       
-      // Gestisci i messaggi in modo diverso se sono stati inviati da noi
+      
       setMessages(prev => {
-        // Se il messaggio è stato inviato da noi
+        
         if (message.senderId === currentUserRef.current?.id) {
-          // Rimuovi eventuali versioni locali dello stesso messaggio
+         
           const filteredMessages = prev.filter(msg => 
-            !msg._isLocalOnly || // Mantieni tutti i messaggi che non sono solo locali
-            msg.content !== message.content || // O che hanno contenuto diverso
-            msg.senderId !== message.senderId || // O mittente diverso
-            msg.receiverId !== message.receiverId // O destinatario diverso
+            !msg._isLocalOnly || 
+            msg.content !== message.content || 
+            msg.senderId !== message.senderId || 
+            msg.receiverId !== message.receiverId 
           );
           
-          // Aggiungi la versione del server
+         
           return [...filteredMessages, message];
         }
         
-        // Altrimenti, è un messaggio ricevuto normalmente
+        
         return [...prev, message];
       });
       
-      // Scroll to bottom on new message
+      
       setTimeout(() => {
         scrollToBottom();
       }, 100);
       
-      // Il resto del codice per le notifiche rimane invariato
+      
       if (message.receiverId === currentUserRef.current?.id && message.senderId !== currentUserRef.current?.id) {
         if (!selectedUserRef.current || selectedUserRef.current.id !== message.senderId) {
           setUnreadMessages(prev => ({
@@ -258,7 +258,7 @@ const Chat = () => {
       // Riproduci suono della chiamata
       playNotificationSound();
       
-      // Mostra notifica del browser se consentito
+      
       if (Notification.permission === 'granted' && document.visibilityState !== 'visible') {
         new Notification(`Chiamata in arrivo da ${data.username}`, {
           body: 'Clicca per rispondere alla chiamata video',
@@ -314,7 +314,7 @@ const Chat = () => {
       senderId: currentUser.id
     });
 
-    // Ottimisticamente aggiungiamo il messaggio alla lista solo per UX immediata
+    
     const newMessage: Message = {
       id: Date.now(), // ID temporaneo
       content: inputMessage,
@@ -325,7 +325,7 @@ const Chat = () => {
       sender: {
         username: currentUser.username
       },
-      _isLocalOnly: true // Aggiungi un flag per indicare che è un messaggio locale
+      _isLocalOnly: true 
     };
 
     setMessages(prev => [...prev, newMessage]);
@@ -340,13 +340,13 @@ const Chat = () => {
     const file = files[0];
     setIsUploading(true);
     
-    // Crea un FormData per caricare il file
+  
     const formData = new FormData();
     formData.append('file', file);
     formData.append('senderId', currentUser.id.toString());
     formData.append('receiverId', selectedUser.id.toString());
     
-    // Carica il file al server
+    
     fetch('/api/upload', {
       method: 'POST',
       body: formData,
@@ -356,7 +356,7 @@ const Chat = () => {
     .then(data => {
       console.log('File uploaded:', data);
       
-      // Invia un messaggio con il link al file
+      
       socket.emit('send_message', {
         content: `FILE:${data.fileType}:${data.fileName}:${data.fileUrl}`,
         receiverId: selectedUser.id,
@@ -364,7 +364,7 @@ const Chat = () => {
         fileType: data.fileType
       });
       
-      // Resetta l'input file
+     
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -379,11 +379,11 @@ const Chat = () => {
   };
 
   const renderMessage = (message: Message) => {
-    // Controlla se il messaggio contiene un file
+    
     if (message.content.startsWith('FILE:')) {
       const [, fileType, fileName, fileUrl] = message.content.split(':');
       
-      // Renderizza in base al tipo di file
+      
       if (fileType.startsWith('image')) {
         return (
           <div className="file-message image-message">
@@ -427,7 +427,7 @@ const Chat = () => {
           </div>
         );
       } else {
-        // Per tutti gli altri tipi di file
+        
         return (
           <div className="file-message generic-file">
             <div className="file-icon">📎</div>
@@ -439,7 +439,7 @@ const Chat = () => {
       }
     }
     
-    // Messaggio normale di testo
+    
     return message.content;
   };
 
@@ -447,20 +447,20 @@ const Chat = () => {
     setSelectedUser(user);
     console.log('Selected user:', user.username);
     
-    // Azzera i messaggi non letti per questo utente
+    
     setUnreadMessages(prev => ({
       ...prev,
       [user.id]: 0
     }));
     
-    // Notifica il server che stiamo visualizzando la chat con questo utente
+    
     if (socket && currentUser) {
       socket.emit('chat_open', {
         userId: currentUser.id,
         withUserId: user.id
       });
       
-      // Opzionale: segna i messaggi come letti nel database
+      
       socket.emit('mark_messages_read', {
         senderId: user.id,
         receiverId: currentUser.id
@@ -471,14 +471,14 @@ const Chat = () => {
   const startVideoCall = () => {
     if (!selectedUser || !currentUser || !socket) return;
     
-    // Invia richiesta di chiamata
+    
     socket.emit('video_call_request', {
       to: selectedUser.id,
       from: currentUser.id,
       username: currentUser.username
     });
     
-    // Mostra notifica all'utente
+   
     alert(`Chiamata a ${selectedUser.username} in corso...`);
   };
 
@@ -491,7 +491,7 @@ const Chat = () => {
       from: currentUser.id
     });
     
-    // Trova l'utente chiamante
+    
     const caller = users.find(u => u.id === incomingCall.from);
     if (caller) {
       setCallPeerUser(caller);
@@ -499,37 +499,25 @@ const Chat = () => {
       setShowVideoCall(true);
     }
     
-    // Resetta la notifica di chiamata
+   
     setIncomingCall(null);
   };
 
   const rejectVideoCall = () => {
     if (!incomingCall || !currentUser || !socket) return;
     
-    // Rifiuta la chiamata
+   
     socket.emit('video_call_rejected', {
       to: incomingCall.from,
       from: currentUser.id
     });
     
-    // Resetta la notifica di chiamata
+   
     setIncomingCall(null);
   };
 
   const endVideoCall = () => {
     setShowVideoCall(false);
-  };
-
-  const handleLogout = () => {
-    if (socket) {
-      socket.disconnect();
-    }
-    
-    // Imposta un flag nel localStorage
-    localStorage.setItem('redirectToLogin', 'true');
-    
-    // Ricarica la pagina
-    window.location.reload();
   };
 
   if (loading) {
@@ -587,23 +575,23 @@ const Chat = () => {
             className="logout-button" 
             onClick={async () => {
               try {
-                // 1. Disconnetti il socket
+                
                 if (socket) {
                   socket.disconnect();
                 }
                 
-                // 2. Chiama l'API di logout sul server per terminare la sessione
+                
                 await fetch('/api/auth/logout', {
                   method: 'POST',
                   credentials: 'include'
                 });
                 
-                // 3. Pulisci i dati di autenticazione lato client
+                
                 localStorage.removeItem('authToken');
                 sessionStorage.removeItem('authToken');
                 document.cookie = 'authToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
                 
-                // 4. Reindirizza alla pagina di login
+                
                 window.location.href = '/login';
               } catch (error) {
                 console.error('Logout failed:', error);

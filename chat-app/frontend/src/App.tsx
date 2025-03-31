@@ -1,4 +1,4 @@
-// src/App.tsx
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Login from './components/Login';
@@ -28,7 +28,7 @@ function App() {
     checkAuth();
   }, []);
 
-  // Funzione che verrà passata come prop al componente Login
+ 
   const handleLogin = () => {
     setIsAuth(true);
   };

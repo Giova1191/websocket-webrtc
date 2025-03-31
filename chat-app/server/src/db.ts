@@ -7,12 +7,12 @@ const DATA_DIR = path.join(__dirname, '../data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const MESSAGES_FILE = path.join(DATA_DIR, 'messages.json');
 
-// Assicurati che la directory esista
+
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// Inizializza i file se non esistono
+
 if (!fs.existsSync(USERS_FILE)) {
   fs.writeFileSync(USERS_FILE, JSON.stringify([]));
 }
@@ -36,9 +36,9 @@ interface Message {
   createdAt: string;
 }
 
-// Database di esempio
+
 export const db = {
-  // Utenti
+  
   getUser: async (username: string): Promise<User | null> => {
     const users: User[] = JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
     return users.find(u => u.username === username) || null;
@@ -64,7 +64,7 @@ export const db = {
     return users.map(({ id, username }) => ({ id, username, online: false }));
   },
 
-  // Messaggi
+  
   createMessage: async (data: { content: string, senderId: number, receiverId: number }): Promise<Message> => {
     const messages: Message[] = JSON.parse(fs.readFileSync(MESSAGES_FILE, 'utf-8'));
     

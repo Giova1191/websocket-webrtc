@@ -1,87 +1,168 @@
-# README.md
+# Chat App con WebSocket e WebRTC
 
-# Chat App
+Un'applicazione di chat in tempo reale con funzionalità di messaggistica e videochiamate, costruita con React, Node.js, Socket.IO e WebRTC.
 
-Questo progetto è un'applicazione di chat in tempo reale che utilizza WebRTC per videochiamate e Socket.io per la messaggistica. È costruita con Node.js, TypeScript, Express per il backend e React con Vite per il frontend.
 
-## Struttura del Progetto
+## 🚀 Funzionalità
 
-```
-chat-app
-├── client
-│   ├── src
-│   │   ├── components
-│   │   │   ├── Chat.tsx
-│   │   │   ├── Login.tsx
-│   │   │   ├── Register.tsx
-│   │   │   └── VideoCall.tsx
-│   │   ├── types
-│   │   │   └── index.ts
-│   │   ├── App.tsx
-│   │   ├── main.tsx
-│   │   └── vite-env.d.ts
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── vite.config.ts
-├── server
-│   ├── src
-│   │   ├── controllers
-│   │   │   ├── authController.ts
-│   │   │   └── chatController.ts
-│   │   ├── models
-│   │   │   └── User.ts
-│   │   ├── routes
-│   │   │   ├── authRoutes.ts
-│   │   │   └── chatRoutes.ts
-│   │   ├── types
-│   │   │   └── index.ts
-│   │   ├── app.ts
-│   │   └── server.ts
-│   ├── package.json
-│   └── tsconfig.json
-└── README.md
-```
+- **Autenticazione Utente**
+  - Registrazione e login
+  - Gestione della sessione utente
 
-## Installazione
+- **Chat in Tempo Reale**
+  - Messaggistica istantanea tra utenti
+  - Indicatore di stato online/offline
+  - Notifiche di nuovi messaggi
+  - Cronologia delle conversazioni
 
-1. Clona il repository:
+- **Videochiamate**
+  - Chiamate video one-to-one con WebRTC
+  - Controlli audio (muto/attivo)
+  - Controlli video (attiva/disattiva camera)
+  - Condivisione schermo
+  - Layout adattivo per la videochiamata
+
+- **Condivisione File**
+  - Supporto per l'invio di file di vari formati
+  - Anteprima di immagini, video e documenti
+  - Download diretto dei file condivisi
+
+- **UI/UX**
+  - Interfaccia moderna e responsive
+  - Dark mode (opzionale)
+  - Layout ottimizzato per desktop e mobile
+
+## 🛠️ Tecnologie Utilizzate
+
+### Frontend
+- **React** - Libreria UI
+- **TypeScript** - Tipizzazione statica
+- **Socket.IO Client** - Comunicazione in tempo reale
+- **WebRTC** - Videochiamate P2P
+- **CSS Modules/SCSS** - Stile
+
+### Backend
+- **Node.js** - Runtime JavaScript
+- **Express** - Framework web
+- **Socket.IO** - Server WebSocket
+- **SQLite/PostgreSQL** - Database
+- **JWT** - Autenticazione
+- **Multer** - Gestione upload file
+
+## 📋 Prerequisiti
+
+- Node.js (v14.x o superiore)
+- npm o yarn
+- Un browser moderno che supporti WebRTC (Chrome, Firefox, Safari, Edge)
+
+## ⚙️ Installazione e Setup
+
+1. **Clona il repository**
    ```bash
-   git clone <URL_DEL_REPOSITORY>
+   git clone https://github.com/Giova1191/websocket-webrtc
    cd chat-app
    ```
 
-2. Installa le dipendenze per il client:
+2. **Installa le dipendenze del backend**
    ```bash
-   cd client
+   cd backend
    npm install
    ```
 
-3. Installa le dipendenze per il server:
+3. **Installa le dipendenze del frontend**
    ```bash
-   cd ../server
+   cd ../frontend
    npm install
    ```
 
-## Esecuzione
-
-1. Avvia il server:
-   ```bash
-   cd server
-   npm run start
+4. **Configura le variabili d'ambiente**
+   - Crea un file `.env` nella cartella backend
+   ```
+   PORT=5000
+   JWT_SECRET=your_jwt_secret
+   DATABASE_URL=your_database_url
    ```
 
-2. Avvia il client:
+5. **Avvia il server backend**
    ```bash
-   cd client
-   npm run dev
+   cd ../backend
+   npm start
    ```
 
-## Funzionalità
+6. **Avvia il client frontend**
+   ```bash
+   cd ../frontend
+   npm start
+   ```
 
-- Registrazione e login degli utenti
-- Chat in tempo reale
-- Videochiamate tramite WebRTC
+7. **Apri l'applicazione**
+   - Naviga su `http://localhost:5173` nel tuo browser
 
-## Contribuire
+## 🎮 Come Usare l'Applicazione
 
-Se desideri contribuire a questo progetto, sentiti libero di aprire una pull request o segnalare problemi.
+1. **Registrazione e Login**
+   - Crea un nuovo account o accedi con credenziali esistenti
+   - L'applicazione ti reindirizzerà alla dashboard della chat
+
+2. **Messaggistica**
+   - Seleziona un utente dalla lista contatti
+   - Scrivi il tuo messaggio e premi invio
+   - Puoi inviare testo, emoji e file
+
+3. **Videochiamate**
+   - Seleziona un utente online
+   - Clicca sull'icona della videocamera per iniziare una chiamata
+   - Usa i controlli per gestire audio, video e condivisione schermo
+   - Clicca "Termina chiamata" per chiudere
+
+4. **Condivisione File**
+   - Clicca sull'icona di allegato nella chat
+   - Seleziona il file da condividere
+   - Il file verrà caricato e condiviso nella conversazione
+
+5. **Logout**
+   - Clicca sul pulsante di logout nella sidebar per uscire
+
+## 🔒 Sicurezza
+
+- L'applicazione utilizza JWT per l'autenticazione
+- Le password vengono hashate prima di essere archiviate
+- Le connessioni WebSocket sono autenticate
+- I file caricati vengono validati per tipo e dimensione
+
+## 🧩 Architettura
+
+L'applicazione è strutturata secondo un'architettura client-server:
+
+- **Client (Frontend)**
+  - Componenti React per UI
+  - Socket.IO client per messaggistica in tempo reale
+  - API WebRTC per videochiamate peer-to-peer
+
+- **Server (Backend)**
+  - API RESTful per autenticazione e operazioni CRUD
+  - Server Socket.IO per gestire eventi in tempo reale
+  - Middleware di autenticazione
+  - Gestione dello storage per upload file
+
+## 👨‍💻 Sviluppo Futuro
+
+Funzionalità pianificate per future versioni:
+
+- Chat di gruppo
+- Crittografia end-to-end dei messaggi
+- Notifiche push
+- Ricerca messaggi e contatti
+- Chiamate audio senza video
+
+
+## 📞 Contatti
+
+Per domande o feedback, contattare:
+
+- Nome: Giovanni Diluca
+- Email: giovanni.diluca@hotmail.it
+- GitHub: https://github.com/Giova1191
+
+---
+

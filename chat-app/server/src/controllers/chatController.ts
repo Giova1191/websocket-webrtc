@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Message } from '../types';
-import { getMessages, saveMessage } from '../models/MessageModel'; // Assicurati di avere un modello per i messaggi
+import { getMessages, saveMessage } from "../models/MessageModel"; 
 
 export const getChatMessages = async (req: Request, res: Response) => {
     try {

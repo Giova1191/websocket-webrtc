@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import './Login.css';
 
-// Definisci l'interfaccia per le props
+
 interface LoginProps {
   onLogin: () => void;
 }
 
-// Usa l'interfaccia nel componente
+
 const Login = ({ onLogin }: LoginProps) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +38,7 @@ const Login = ({ onLogin }: LoginProps) => {
 
       if (response.ok) {
         console.log(`Authentication successful`);
-        onLogin(); // Utilizza la funzione passata come prop
+        onLogin(); 
       } else {
         console.error(`Authentication failed:`, data);
         setError(data.message || `Errore durante ${isRegistering ? 'la registrazione' : 'il login'}`);

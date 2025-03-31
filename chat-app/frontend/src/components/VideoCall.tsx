@@ -1,8 +1,8 @@
-// src/components/VideoCall.tsx
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import './VideoCall.css';
 
-// Definiamo interfacce più specifiche per i dati
+
 interface IceCandidate {
   candidate: RTCIceCandidateInit;
   from: number;
@@ -27,7 +27,7 @@ interface AnswerData {
   to?: number;
 }
 
-// Miglioriamo l'interfaccia del socket con tipi specifici
+
 interface SocketInterface {
   emit(event: 'video_call_ended', data: CallData): void;
   emit(event: 'video_ice_candidate', data: IceCandidate): void;
@@ -132,10 +132,10 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
         // Inizia la condivisione schermo
         const displayMediaOptions = {
           video: {
-            cursor: "always"
+            cursor: "always" as const
           },
           audio: false
-        };
+        } as DisplayMediaStreamOptions;
 
         const stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
         screenStream.current = stream;
@@ -152,7 +152,7 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
           }
         }
 
-        // Gestisci la fine della condivisione quando l'utente preme "Stop sharing"
+        
         stream.getVideoTracks()[0].addEventListener('ended', () => {
           toggleScreenSharing();
         });
@@ -225,12 +225,12 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
 
     const startCall = async () => {
       try {
-        // Riduci la qualità video per migliorare le prestazioni
+        
         const constraints = {
           video: {
-            width: { ideal: 640 },  // Riduci da valori più alti
-            height: { ideal: 480 }, // Riduci da valori più alti
-            frameRate: { max: 15 }  // Limita il framerate per risparmiare risorse
+            width: { ideal: 640 },  
+            height: { ideal: 480 }, 
+            frameRate: { max: 15 }  
           },
           audio: true
         };
@@ -247,21 +247,21 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
         // Crea la connessione peer
         peerConnection.current = new RTCPeerConnection(configuration);
 
-        // Aggiungi le tracce alla connessione peer
+        
         stream.getTracks().forEach(track => {
           if (peerConnection.current) {
             peerConnection.current.addTrack(track, stream);
           }
         });
 
-        // Gestisci il flusso remoto in arrivo
+        
         peerConnection.current.ontrack = event => {
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
           }
         };
 
-        // Gestisci i candidati ICE
+        
         peerConnection.current.onicecandidate = event => {
           if (event.candidate) {
             socket.emit('video_ice_candidate', {
@@ -272,7 +272,7 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
           }
         };
 
-        // Gestisci i cambiamenti di stato della connessione
+        
         peerConnection.current.oniceconnectionstatechange = () => {
           if (peerConnection.current) {
             setConnectionState(peerConnection.current.iceConnectionState);
@@ -285,7 +285,7 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
           }
         };
 
-        // Se sei l'iniziatore, crea l'offerta
+        
         if (isInitiator) {
           const offer = await peerConnection.current.createOffer();
           await peerConnection.current.setLocalDescription(offer);
@@ -297,7 +297,7 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
           });
         }
 
-        // Listener per eventi socket
+        
         socket.on('video_offer', async (data) => {
           if (data.from === peerUser.id && peerConnection.current) {
             await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.offer));
@@ -340,9 +340,9 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
 
     startCall();
 
-    // Cleanup
+    
     return () => {
-      // Rimuovi i listener
+      
       socket.off('video_offer');
       socket.off('video_answer');
       socket.off('video_ice_candidate');
@@ -363,20 +363,20 @@ const VideoCall = ({ socket, currentUser, peerUser, onClose, isInitiator }: Vide
   useEffect(() => {
     let animationFrameId: number;
     let lastTime = 0;
-    const FPS_CAP = 15; // Limita a 15 fps invece di 60
+    const FPS_CAP = 15; 
     const interval = 1000 / FPS_CAP;
     
     const optimizedRender = (currentTime: number) => {
       animationFrameId = requestAnimationFrame(optimizedRender);
       
-      // Limita il frame rate
+      
       if (currentTime - lastTime < interval) return;
       lastTime = currentTime;
       
-      // Qui potresti aggiornare lo stato o animazioni se necessario
+      
     };
     
-    // Avvia il loop ottimizzato
+   
     animationFrameId = requestAnimationFrame(optimizedRender);
     
     return () => {

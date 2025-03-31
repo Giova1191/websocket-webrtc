@@ -1,18 +1,18 @@
-/* src/components/Chat.css */
+
 .chat-container {
     display: flex;
     height: 90vh;
     overflow: hidden;
     background-color: #f5f7fb;
     width: 1000px;;
-    max-width: 1400px; /* Aggiungi una larghezza massima */
-      margin: 0 auto; /* Centra orizzontalmente */
+    max-width: 1400px; 
+      margin: 0 auto; 
   }
   
   .sidebar {
     display: flex;
     flex-direction: column;
-    width: 250px; /* Ridotta da 300px */
+    width: 250px; 
     background-color: #ffffff;
     border-right: 1px solid #e2e8f0;
   }
