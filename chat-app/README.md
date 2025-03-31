@@ -3,6 +3,17 @@
 Un'applicazione di chat in tempo reale con funzionalità di messaggistica e videochiamate, costruita con React, Node.js, Socket.IO e WebRTC.
 
 
+## 🎥 Video Tutorial
+Guarda il tutorial direttamente da GitHub:  
+[Scarica/Apri il video](https://github.com/Giova1191/websocket-webrtc/blob/main/chat-app/demos/videotutorial.mp4)
+
+## 📸 Screenshots
+
+Visualizza tutti gli screenshot nella cartella dedicata:  
+[screenshots/](https://github.com/Giova1191/websocket-webrtc/tree/main/chat-app/screenshots)
+
+*(Clicca per vedere tutte le immagini)*
+
 ## 🚀 Funzionalità
 
 - **Autenticazione Utente**
@@ -29,13 +40,13 @@ Un'applicazione di chat in tempo reale con funzionalità di messaggistica e vide
 
 - **UI/UX**
   - Interfaccia moderna e responsive
-  - Dark mode (opzionale)
-  - Layout ottimizzato per desktop e mobile
+  
+  
 
 ## 🛠️ Tecnologie Utilizzate
 
 ### Frontend
-- **React** - Libreria UI
+- **React** - Vite
 - **TypeScript** - Tipizzazione statica
 - **Socket.IO Client** - Comunicazione in tempo reale
 - **WebRTC** - Videochiamate P2P
@@ -45,8 +56,8 @@ Un'applicazione di chat in tempo reale con funzionalità di messaggistica e vide
 - **Node.js** - Runtime JavaScript
 - **Express** - Framework web
 - **Socket.IO** - Server WebSocket
-- **SQLite/PostgreSQL** - Database
-- **JWT** - Autenticazione
+- **Mysql** - Database
+- **Express-sesion** - Autenticazione
 - **Multer** - Gestione upload file
 
 ## 📋 Prerequisiti
@@ -107,7 +118,7 @@ Un'applicazione di chat in tempo reale con funzionalità di messaggistica e vide
 2. **Messaggistica**
    - Seleziona un utente dalla lista contatti
    - Scrivi il tuo messaggio e premi invio
-   - Puoi inviare testo, emoji e file
+   - Puoi inviare testo e file
 
 3. **Videochiamate**
    - Seleziona un utente online
@@ -125,7 +136,7 @@ Un'applicazione di chat in tempo reale con funzionalità di messaggistica e vide
 
 ## 🔒 Sicurezza
 
-- L'applicazione utilizza JWT per l'autenticazione
+
 - Le password vengono hashate prima di essere archiviate
 - Le connessioni WebSocket sono autenticate
 - I file caricati vengono validati per tipo e dimensione
